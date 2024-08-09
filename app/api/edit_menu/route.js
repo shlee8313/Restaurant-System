@@ -5,6 +5,7 @@ import dbConnect from "../../lib/mongoose";
 import Menu from "../../models/Menu";
 import Restaurant from "../../models/Restaurant";
 import jwt from "jsonwebtoken";
+export const dynamic = "force-dynamic";
 
 const SECRET_KEY = process.env.JWT_SECRET_KEY; // Ensure you have this in your environment variables
 // export const dynamic = "force-dynamic";

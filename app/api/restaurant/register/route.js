@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "../../../lib/mongoose";
 import Restaurant from "../../../models/Restaurant";
+export const dynamic = "force-dynamic";
 /**
  *
  */
