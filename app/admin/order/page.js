@@ -331,9 +331,43 @@ export default function AdminOrderPage() {
 
       console.log("Current tables after update:", useTableStore.getState().tables);
       toast.info(`새로운 주문이 접수되었습니다. 테이블: ${data.tableId} ${data.items[0].name}`);
+      // 주문 인쇄 요청
+      printOrder(newOrder, data.tableId);
     },
     [updateTable, addToOrderQueue]
   );
+  /**
+   *
+   */
+  const printOrder = async (order, tableId) => {
+    console.log("Sending print request for order:", order._id);
+    try {
+      const response = await fetch("/api/print-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ order, tableId }),
+      });
+
+      console.log("Received response:", response.status);
+
+      if (!response.ok) {
+        throw new Error("Printing failed");
+      }
+
+      const data = await response.json();
+      console.log("Response data:", data);
+
+      return data;
+    } catch (error) {
+      console.error("Error in printOrder:", error);
+      throw error;
+    }
+  };
+  /**
+   *
+   */
   // 컴포넌트 마운트 시 실행되는 효과
   useEffect(() => {
     console.log("AdminOrderPage useEffect triggered");
