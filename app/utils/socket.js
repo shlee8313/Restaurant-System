@@ -3,7 +3,9 @@ import io from "socket.io-client";
 let socket;
 
 export const initSocket = (restaurantId) => {
-  socket = io("http://localhost:5000", {
+  const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL;
+  console.log(socketServerUrl);
+  socket = io(socketServerUrl, {
     query: { restaurantId },
   });
   return socket;

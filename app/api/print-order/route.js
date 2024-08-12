@@ -1,80 +1,74 @@
-import { ThermalPrinter, PrinterTypes } from "node-thermal-printer";
-
 import { NextResponse } from "next/server";
+import fs from "fs/promises";
+import { exec } from "child_process";
+import path from "path";
+import util from "util";
+
+const execPromise = util.promisify(exec);
 
 export async function POST(request) {
   console.log("API route handler started");
 
-  let printer;
   try {
     const { order, tableId } = await request.json();
     console.log("Request body:", { order, tableId });
 
-    console.log("Initializing printer");
-    printer = new ThermalPrinter({
-      type: PrinterTypes.HP, // 프린터 제조사에 따라 변경 가능
-      interface: "printer:HP LaserJet Professional P1102", // Windows 프린터 이름
-      driver: require("printer"),
-      options: {
-        timeout: 5000, // 5초 타임아웃
-      },
-    });
+    // 텍스트 파일 내용 생성
+    const content = `\uFEFF주문 영수증
+==============================
 
-    console.log("Printer configuration:", printer.getConfig());
+테이블: ${tableId}
 
-    console.log("Checking printer connection...");
-    const isConnected = await printer.isPrinterConnected();
-    console.log("Printer connected:", isConnected);
+주문 시간: ${new Date(order.orderedAt).toLocaleString()}
+=============================
+품목         수량    
+${order.items
+  .map((item) => `${item.name.padEnd(12)} ${item.quantity.toString().padEnd(7)}`)
+  .join("\n")}
+=============================
 
-    if (!isConnected) {
-      throw new Error("Printer is not connected");
+    `;
+
+    // 텍스트 파일 경로 (지정된 파일 경로 사용)
+    const filePath = path.join(process.cwd(), "public", "printer-order.txt");
+
+    // UTF-8 with BOM으로 파일에 내용 쓰기
+    await fs.writeFile(filePath, content, { encoding: "utf8" });
+
+    // 프린터 이름 (기본 프린터를 사용하려면 비워두세요)
+    const printerName = ""; // 예: "HP LaserJet Professional P1102"
+
+    // PowerShell 명령어 생성 (UTF-8 인코딩 명시)
+    const psCommand = printerName
+      ? `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content "${filePath}" -Encoding UTF8 | Out-Printer -Name "${printerName}"`
+      : `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content "${filePath}" -Encoding UTF8 | Out-Printer`;
+
+    // PowerShell 실행
+    const { stdout, stderr } = await execPromise(`powershell -Command "${psCommand}"`);
+
+    if (stderr) {
+      console.error(`PowerShell error: ${stderr}`);
+      return NextResponse.json(
+        { error: "Failed to print order", details: stderr },
+        { status: 500 }
+      );
     }
 
-    // 주문 정보 인쇄
-    console.log("Printing order information");
-    printer.alignCenter();
-    printer.setTextQuadArea();
-    printer.println("주문 영수증");
-    printer.setTextNormal();
-    printer.drawLine();
+    console.log(`Print command executed successfully: ${stdout}`);
 
-    printer.alignLeft();
-    printer.println(`주문 ID: ${order._id}`);
-    printer.println(`테이블: ${tableId}`);
-    printer.println(`주문 시간: ${new Date(order.orderedAt).toLocaleString()}`);
-    printer.drawLine();
+    // 출력 후 파일 내용 지우기
+    await fs.writeFile(filePath, "", { encoding: "utf8" });
 
-    printer.tableCustom([
-      { text: "품목", width: 0.4 },
-      { text: "수량", width: 0.2 },
-      { text: "가격", width: 0.4 },
-    ]);
-
-    order.items.forEach((item) => {
-      printer.tableCustom([
-        { text: item.name, width: 0.4 },
-        { text: item.quantity.toString(), width: 0.2 },
-        { text: `${item.price * item.quantity}원`, width: 0.4 },
-      ]);
-    });
-
-    printer.drawLine();
-    printer.alignRight();
-    printer.println(`총 금액: ${order.totalAmount}원`);
-    printer.cut();
-
-    console.log("Executing print command");
-    const result = await printer.execute();
-    console.log("Print command executed successfully", result);
-
-    return NextResponse.json({ message: "Order printed successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Order sent to printer and content cleared" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Printing error:", error);
     return NextResponse.json(
       {
-        error: "Failed to print order",
+        error: "Failed to process print order",
         details: error.message,
-        printerConfig: printer ? printer.getConfig() : "Printer not initialized",
       },
       { status: 500 }
     );
