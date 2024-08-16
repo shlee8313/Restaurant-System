@@ -159,24 +159,24 @@ export default function AdminOrderPage() {
    * 오늘의 매출 데이터를 가져옵니다.
    */
 
-  const fetchTodaySales = async () => {
-    const today = format(new Date(), "yyyy-MM-dd");
-    try {
-      const response = await fetch(
-        `/api/sales/todaySales?restaurantId=${restaurant.restaurantId}&date=${today}`
-      );
-      const data = await response.json();
-      console.log(data);
-      if (response.ok) {
-        setTodaySales(data.totalSales);
-        console.log(data);
-      } else {
-        console.error("Failed to fetch today's sales:", data.error);
-      }
-    } catch (error) {
-      console.error("Failed to fetch today's sales:", error);
-    }
-  };
+  // const fetchTodaySales = async () => {
+  //   const today = format(new Date(), "yyyy-MM-dd");
+  //   try {
+  //     const response = await fetch(
+  //       `/api/sales/todaySales?restaurantId=${restaurant.restaurantId}&date=${today}`
+  //     );
+  //     const data = await response.json();
+  //     console.log(data);
+  //     if (response.ok) {
+  //       setTodaySales(data.totalSales);
+  //       console.log(data);
+  //     } else {
+  //       console.error("Failed to fetch today's sales:", data.error);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to fetch today's sales:", error);
+  //   }
+  // };
   // fetchTodaySales 함수 끝
 
   /**
@@ -249,7 +249,7 @@ export default function AdminOrderPage() {
       // 주문 대기열 정렬
       reorderQueue();
       //오늘매출 가져오기
-      fetchTodaySales();
+      // fetchTodaySales();
     } catch (error) {
       console.error("Error fetching tables and orders:", error);
       toast.error(`테이블 및 주문 정보를 불러오는데 실패했습니다: ${error.message}`);
