@@ -48,6 +48,7 @@ export default function AdminOrderPage() {
   const router = useRouter();
   const [activeTabsState, setActiveTabsState] = useState({});
   const { todaySales, setTodaySales } = useSalesStore();
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   /**
    * 초기 테이블 생성 함수
    * 레스토랑에 기본 테이블 레이아웃을 설정합니다.
@@ -369,38 +370,89 @@ export default function AdminOrderPage() {
    *
    */
   // 컴포넌트 마운트 시 실행되는 효과
+  // useEffect(() => {
+  //   console.log("AdminOrderPage useEffect triggered");
+
+  //   if (!restaurant || !restaurantToken || !restaurant.hasTables) {
+  //     console.log("No restaurant or token or hasTables. Redirecting to login...");
+  //     router.push("/restaurant/login");
+  //     return;
+  //   }
+
+  //   console.log("Initializing AdminOrderPage...");
+  //   /**
+  //    *
+  //    */
+  //   fetchTablesAndOrders();
+
+  //   /**
+  //    *
+  //    */
+  //   const newSocket = initializeSocket();
+  //   if (newSocket) {
+  //     newSocket.on("newOrder", handleNewOrder);
+  //     setSocket(newSocket);
+  //   }
+
+  //   return () => {
+  //     if (newSocket) {
+  //       newSocket.off("newOrder", handleNewOrder);
+  //       closeSocket();
+  //     }
+  //   };
+  // }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
   useEffect(() => {
     console.log("AdminOrderPage useEffect triggered");
 
     if (!restaurant || !restaurantToken || !restaurant.hasTables) {
       console.log("No restaurant or token or hasTables. Redirecting to login...");
-      router.push("/restaurant/login");
+      router.push("/auth/login");
       return;
     }
 
     console.log("Initializing AdminOrderPage...");
-    /**
-     *
-     */
-    fetchTablesAndOrders();
 
-    /**
-     *
-     */
-    const newSocket = initializeSocket();
-    if (newSocket) {
-      newSocket.on("newOrder", handleNewOrder);
-      setSocket(newSocket);
+    const initializeApp = async () => {
+      setIsLoading(true);
+      try {
+        await fetchTablesAndOrders();
+        console.log("Calling fetchTodaySales with restaurantId:", restaurant.restaurantId);
+        fetchTodaySales();
+        // await fetchTodaySales(restaurant.restaurantId, restaurantToken);
+      } catch (error) {
+        console.error("Error initializing AdminOrderPage:", error);
+        toast.error("페이지 초기화 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, [restaurant, restaurantToken, router, fetchTablesAndOrders, fetchTodaySales]);
+
+  // 소켓 연결을 위한 별도의 useEffect
+  useEffect(() => {
+    if (!isSocketConnected && restaurant && restaurantToken) {
+      console.log("Initializing socket connection...");
+      const newSocket = initializeSocket();
+      if (newSocket) {
+        newSocket.on("newOrder", handleNewOrder);
+        setSocket(newSocket);
+        setIsSocketConnected(true);
+        console.log("Socket connection established and event listener added.");
+      }
     }
 
     return () => {
-      if (newSocket) {
-        newSocket.off("newOrder", handleNewOrder);
+      if (socket) {
+        console.log("Cleaning up socket connection...");
+        socket.off("newOrder", handleNewOrder);
         closeSocket();
+        setIsSocketConnected(false);
+        console.log("Socket connection closed and event listener removed.");
       }
     };
-  }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
-
+  }, [isSocketConnected, restaurant, restaurantToken, initializeSocket, handleNewOrder]);
   /**
    * 테이블 업데이트 핸들러
    * 테이블의 속성(위치, 크기 등)을 업데이트합니다.
