@@ -126,37 +126,18 @@ export async function PATCH(request) {
     const { restaurantId, tableId, action, orderId, newStatus } = body;
 
     if (action === "completeAllOrders") {
-      const orders = await Order.find({ restaurantId, tableId, status: { $ne: "completed" } });
-
-      for (const order of orders) {
-        order.status = "completed";
-        await order.save();
-
-        // Update DailySales
-        const orderDate = order.createdAt.toISOString().split("T")[0];
-        await DailySales.findOneAndUpdate(
-          { restaurantId, date: orderDate },
-          {
-            $inc: { totalSales: order.totalAmount },
-            $push: {
-              itemSales: order.items.map((item) => ({
-                itemId: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                sales: item.price * item.quantity,
-              })),
-            },
-          },
-          { upsert: true, new: true }
-        );
-      }
+      // 테이블의 모든 주문을 완료 상태로 변경
+      const updatedOrders = await Order.updateMany(
+        { restaurantId, tableId, status: { $ne: "completed" } },
+        { $set: { status: "completed" } }
+      );
 
       // 테이블 상태를 'empty'로 변경
       await Table.findOneAndUpdate({ restaurantId, tableId }, { $set: { status: "empty" } });
 
-      return res.json({
+      return NextResponse.json({
         message: "All orders completed and table status updated",
-        modifiedCount: orders.length,
+        modifiedCount: updatedOrders.modifiedCount,
       });
     } else {
       // 기존의 단일 주문 상태 변경 로직
@@ -167,27 +148,7 @@ export async function PATCH(request) {
       );
 
       if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-
-      if (newStatus === "completed") {
-        // Update DailySales for single order completion
-        const orderDate = order.createdAt.toISOString().split("T")[0];
-        await DailySales.findOneAndUpdate(
-          { restaurantId: order.restaurantId, date: orderDate },
-          {
-            $inc: { totalSales: order.totalAmount },
-            $push: {
-              itemSales: order.items.map((item) => ({
-                itemId: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                sales: item.price * item.quantity,
-              })),
-            },
-          },
-          { upsert: true, new: true }
-        );
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
 
       // 업데이트된 대기열 정보 가져오기
@@ -196,10 +157,10 @@ export async function PATCH(request) {
         status: { $in: ["pending", "preparing"] },
       }).sort("createdAt");
 
-      return res.json({ message: "Order updated", order, updatedQueue });
+      return NextResponse.json({ message: "Order updated", order, updatedQueue });
     }
   } catch (error) {
     console.error("Failed to update order(s):", error);
-    return res.status(500).json({ error: "Failed to update order(s)" });
+    return NextResponse.json({ error: "Failed to update order(s)" }, { status: 500 });
   }
 }

@@ -704,7 +704,7 @@ export default function AdminOrderPage() {
         const updatedQueue = orderQueue.filter((order) => order.tableId !== tableId);
         initializeOrderQueue(updatedQueue);
 
-        // toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
+        toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
         // fetchTodaySales();
         // 테이블 정보 새로고침
         // await fetchTablesAndOrders();
