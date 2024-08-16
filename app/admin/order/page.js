@@ -386,7 +386,7 @@ export default function AdminOrderPage() {
      *
      */
     fetchTablesAndOrders();
-    fetchTodaySales();
+    // fetchTodaySales();
     /**
      *
      */
