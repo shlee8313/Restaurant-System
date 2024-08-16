@@ -14,6 +14,7 @@ import useOrderQueueStore from "../../store/useOrderQueueStore";
 import { v4 as uuidv4 } from "uuid";
 import useSalesStore from "@/app/store/useSalesStore";
 import { format } from "date-fns";
+import LoadingSpinner from "../../components/LoadingSpinner";
 /**
  * 
  
@@ -29,7 +30,8 @@ export default function AdminOrderPage() {
     addTable,
     removeTable,
     updateTableOrder,
-    updateOrderItemStatus,
+    getTableById,
+    getActiveOrders,
   } = useTableStore();
   const {
     orderQueue,
@@ -47,7 +49,13 @@ export default function AdminOrderPage() {
   const [socket, setSocket] = useState(null);
   const router = useRouter();
   const [activeTabsState, setActiveTabsState] = useState({});
-  const { todaySales, setTodaySales } = useSalesStore();
+  const { todaySales, setTodaySales, fetchTodaySales } = useSalesStore();
+  const [isLoading, setIsLoading] = useState(true);
+
+  /**
+   *
+   */
+
   /**
    * 초기 테이블 생성 함수
    * 레스토랑에 기본 테이블 레이아웃을 설정합니다.
@@ -119,7 +127,7 @@ export default function AdminOrderPage() {
     const createdTables = await Promise.all(
       initialTables.map(async (table) => {
         try {
-          const response = await fetch("/api/tables", {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -156,24 +164,27 @@ export default function AdminOrderPage() {
    * 오늘의 매출 데이터를 가져옵니다.
    */
 
-  const fetchTodaySales = async () => {
-    const today = format(new Date(), "yyyy-MM-dd");
-    try {
-      const response = await fetch(
-        `/api/sales/todaySales?restaurantId=${restaurant.restaurantId}&date=${today}`
-      );
-      const data = await response.json();
-      console.log(data);
-      if (response.ok) {
-        setTodaySales(data.totalSales);
-        console.log(data);
-      } else {
-        console.error("Failed to fetch today's sales:", data.error);
-      }
-    } catch (error) {
-      console.error("Failed to fetch today's sales:", error);
-    }
-  };
+  // const fetchTodaySales = useCallback(async () => {
+  //   const today = format(new Date(), "yyyy-MM-dd");
+  //   try {
+  //     const response = await fetch(
+  //       `${process.env.NEXT_PUBLIC_API_URL}/api/sales/today?restaurantId=${restaurant.restaurantId}&date=${today}`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${restaurantToken}`,
+  //         },
+  //       }
+  //     );
+  //     const data = await response.json();
+  //     if (response.ok) {
+  //       setTodaySales(data.totalSales);
+  //     } else {
+  //       console.error("Failed to fetch today's sales:", data.error);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to fetch today's sales:", error);
+  //   }
+  // }, [restaurant?.restaurantId, restaurantToken, setTodaySales]);
   // fetchTodaySales 함수 끝
 
   /**
@@ -182,6 +193,7 @@ export default function AdminOrderPage() {
    */
 
   const fetchTablesAndOrders = useCallback(async () => {
+    console.log("fetchTablesAndOrders");
     if (!restaurant?.restaurantId) {
       console.error("Restaurant ID is not available");
       return;
@@ -189,16 +201,22 @@ export default function AdminOrderPage() {
 
     try {
       const [tablesResponse, ordersResponse] = await Promise.all([
-        fetch(`/api/tables?restaurantId=${restaurant.restaurantId}`, {
-          headers: {
-            Authorization: `Bearer ${restaurantToken}`,
-          },
-        }),
-        fetch(`/api/orders?restaurantId=${restaurant.restaurantId}`, {
-          headers: {
-            Authorization: `Bearer ${restaurantToken}`,
-          },
-        }),
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/tables?restaurantId=${restaurant.restaurantId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${restaurantToken}`,
+            },
+          }
+        ),
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/orders?restaurantId=${restaurant.restaurantId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${restaurantToken}`,
+            },
+          }
+        ),
       ]);
 
       if (!tablesResponse.ok || !ordersResponse.ok) {
@@ -207,9 +225,6 @@ export default function AdminOrderPage() {
 
       const tablesData = await tablesResponse.json();
       const ordersData = await ordersResponse.json();
-
-      console.log("Fetched tables:", tablesData);
-      console.log("Fetched orders:", ordersData);
 
       // 모든 활성 주문 (completed 상태가 아닌 주문)
       const allActiveOrders = ordersData.filter((order) => order.status !== "completed");
@@ -245,8 +260,8 @@ export default function AdminOrderPage() {
 
       // 주문 대기열 정렬
       reorderQueue();
-      //오늘매출 가져오기
-      fetchTodaySales();
+      // 오늘의 매출 다시 가져오기
+      // fetchTodaySales(restaurant.restaurantId, restaurantToken);
     } catch (error) {
       console.error("Error fetching tables and orders:", error);
       toast.error(`테이블 및 주문 정보를 불러오는데 실패했습니다: ${error.message}`);
@@ -258,7 +273,6 @@ export default function AdminOrderPage() {
     createInitialTables,
     initializeOrderQueue,
     reorderQueue,
-    ,
   ]);
 
   // fetchTablesAndOrders 함수 끝
@@ -329,7 +343,7 @@ export default function AdminOrderPage() {
         totalAmount: newOrder.totalAmount,
       });
 
-      console.log("Current tables after update:", useTableStore.getState().tables);
+      // console.log("Current tables after update:", useTableStore.getState().tables);
       toast.info(`새로운 주문이 접수되었습니다. 테이블: ${data.tableId} ${data.items[0].name}`);
       // 주문 인쇄 요청
       printOrder(newOrder, data.tableId);
@@ -369,37 +383,91 @@ export default function AdminOrderPage() {
    *
    */
   // 컴포넌트 마운트 시 실행되는 효과
+  // useEffect(() => {
+  //   console.log("AdminOrderPage useEffect triggered");
+
+  //   if (!restaurant || !restaurantToken || !restaurant.hasTables) {
+  //     console.log("No restaurant or token or hasTables. Redirecting to login...");
+  //     router.push("/auth/login");
+  //     return;
+  //   }
+
+  //   console.log("Initializing AdminOrderPage...");
+  //   /**
+  //    *
+  //    */
+  //   setIsLoading(true);
+  //   fetchTablesAndOrders().then(() => {
+  //     setIsLoading(false);
+  //   });
+  //   // fetchTablesAndOrders();
+
+  //   /**
+  //    *
+  //    */
+  //   const newSocket = initializeSocket();
+  //   if (newSocket) {
+  //     newSocket.on("newOrder", handleNewOrder);
+  //     setSocket(newSocket);
+  //   }
+
+  //   return () => {
+  //     if (newSocket) {
+  //       newSocket.off("newOrder", handleNewOrder);
+  //       closeSocket();
+  //     }
+  //   };
+  // }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
+
   useEffect(() => {
     console.log("AdminOrderPage useEffect triggered");
 
     if (!restaurant || !restaurantToken || !restaurant.hasTables) {
       console.log("No restaurant or token or hasTables. Redirecting to login...");
-      router.push("/restaurant/login");
+      router.push("/auth/login");
       return;
     }
 
     console.log("Initializing AdminOrderPage...");
-    /**
-     *
-     */
-    fetchTablesAndOrders();
 
-    /**
-     *
-     */
-    const newSocket = initializeSocket();
-    if (newSocket) {
-      newSocket.on("newOrder", handleNewOrder);
-      setSocket(newSocket);
-    }
+    const initializeApp = async () => {
+      setIsLoading(true);
+      try {
+        await fetchTablesAndOrders();
+        // Add log here
+        console.log("Calling fetchTodaySales with restaurantId:", restaurant.restaurantId);
+        await fetchTodaySales(restaurant.restaurantId, restaurantToken);
+
+        const newSocket = initializeSocket();
+        if (newSocket) {
+          newSocket.on("newOrder", handleNewOrder);
+          setSocket(newSocket);
+        }
+      } catch (error) {
+        console.error("Error initializing AdminOrderPage:", error);
+        toast.error("페이지 초기화 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
 
     return () => {
-      if (newSocket) {
-        newSocket.off("newOrder", handleNewOrder);
+      if (socket) {
+        socket.off("newOrder", handleNewOrder);
         closeSocket();
       }
     };
-  }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
+  }, [
+    restaurant,
+    restaurantToken,
+    router,
+    fetchTablesAndOrders,
+    fetchTodaySales,
+    initializeSocket,
+    handleNewOrder,
+  ]);
 
   /**
    * 테이블 업데이트 핸들러
@@ -411,9 +479,9 @@ export default function AdminOrderPage() {
     (id, newProps) => {
       console.log(`Updating table ${id} with:`, newProps);
       updateTable(id, newProps);
-      setTimeout(() => {
-        console.log("Current tables after update:", useTableStore.getState().tables);
-      }, 0);
+      // setTimeout(() => {
+      //   console.log("Current tables after update:", useTableStore.getState().tables);
+      // }, 0);
     },
     [updateTable]
   );
@@ -424,9 +492,8 @@ export default function AdminOrderPage() {
    *  {Array} newTables - 새로운 테이블 레이아웃 배열
    */
   const handleSaveLayout = async (newTables) => {
-    console.log("handleSaveLayout called with:", newTables);
     try {
-      const response = await fetch("/api/tables", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -434,6 +501,7 @@ export default function AdminOrderPage() {
         },
         body: JSON.stringify({ restaurantId: restaurant.restaurantId, tables: newTables }),
       });
+
       if (!response.ok) {
         if (response.status === 401) {
           await refreshToken();
@@ -451,7 +519,6 @@ export default function AdminOrderPage() {
       setCurrentPage("주문내역");
     } catch (error) {
       console.error("Failed to save table layout:", error);
-      // console.error("Error details:", error.message, error.stack);
       toast.error(`테이블 레이아웃 저장에 실패했습니다: ${error.message}`);
     }
   };
@@ -476,14 +543,15 @@ export default function AdminOrderPage() {
           newStatus = "completed";
           break;
         default:
-          return; // 이미 completed 상태면 아무 동작 안 함
+          return;
       }
 
       try {
-        const response = await fetch("/api/tables", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${restaurantToken}`,
           },
           body: JSON.stringify({
             restaurantId: restaurant.restaurantId,
@@ -493,36 +561,32 @@ export default function AdminOrderPage() {
           }),
         });
 
-        console.log("Order ID type:", typeof order._id); // 추가된 로그
         const responseData = await response.json();
 
         if (!response.ok) {
-          console.error("Server response:", responseData);
           throw new Error(responseData.error || "Failed to update order status");
         }
 
-        console.log("Updated order data:", responseData);
-
-        // 로컬 상태 업데이트
         updateTableOrder(tableId, responseData.order);
-        // 주문 대기열 상태 업데이트
         updateOrderStatus(order._id, newStatus);
 
-        // 주문이 완료되면 대기열에서 제거
         if (newStatus === "served") {
           removeFromQueue(order._id);
         }
-        // 전체 테이블 상태 새로고침
-        // await fetchTablesAndOrders();
-
-        // toast.success(`주문 상태가 '${newStatus}'로 업데이트되었습니다.`);
       } catch (error) {
         console.error("Error updating order status:", error);
         toast.error(`주문 상태 업데이트에 실패했습니다: ${error.message}`);
       }
     },
-    [updateTableOrder, restaurant?.restaurantId]
+    [
+      updateTableOrder,
+      restaurant?.restaurantId,
+      restaurantToken,
+      updateOrderStatus,
+      removeFromQueue,
+    ]
   );
+
   /**
    * 호출 완료 핸들러
    * 가격이 0인 항목(호출)을 주문에서 제거합니다.
@@ -625,10 +689,11 @@ export default function AdminOrderPage() {
   const handlePayment = useCallback(
     async (tableId) => {
       try {
-        const response = await fetch("/api/orders", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${restaurantToken}`,
           },
           body: JSON.stringify({
             restaurantId: restaurant.restaurantId,
@@ -651,16 +716,16 @@ export default function AdminOrderPage() {
         const updatedQueue = orderQueue.filter((order) => order.tableId !== tableId);
         initializeOrderQueue(updatedQueue);
 
-        // toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
-        fetchTodaySales();
-        // 테이블 정보 새로고침
-        // await fetchTablesAndOrders();
+        // 오늘의 매출 다시 가져오기
+        fetchTodaySales(restaurant.restaurantId, restaurantToken);
+
+        toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
       } catch (error) {
         console.error("Error completing orders:", error);
         toast.error("주문 완료 처리 중 오류가 발생했습니다.");
       }
     },
-    [restaurant, updateTable, orderQueue, initializeOrderQueue]
+    [restaurant, restaurantToken, updateTable, orderQueue, initializeOrderQueue, fetchTodaySales]
   );
 
   /**
@@ -800,7 +865,12 @@ export default function AdminOrderPage() {
   );
 
   if (!restaurant) return <div>Loading...</div>;
-
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+  /**
+   *
+   */
   return (
     <div className="p-4">
       <AdvancedTableLayout

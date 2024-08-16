@@ -18,50 +18,30 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const restaurantId = searchParams.get("restaurantId");
 
-    console.log(`Query params: restaurantId=${restaurantId}`);
-
     if (!restaurantId) {
-      console.log("Error: Restaurant ID is missing");
-      return NextResponse.json({ error: "Restaurant ID is required" }, { status: 400 });
+      return res.status(400).json({ error: "Restaurant ID is required" });
     }
 
-    // 오늘 날짜 범위 설정 (로컬 시간 기준)
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      23,
-      59,
-      59,
-      999
-    );
+    const today = startOfDay(new Date());
+    const endOfToday = endOfDay(new Date());
 
-    console.log(`Date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+    console.log("Fetching today's sales for restaurant:", restaurantId);
 
-    const todayOrders = await Order.find({
+    const todaySales = await DailySales.findOne({
       restaurantId,
-      status: "completed",
-      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      date: { $gte: today, $lte: endOfToday },
     });
 
-    console.log(`Found ${todayOrders.length} orders for today`);
+    console.log("Today's sales:", todaySales?.totalSales || 0);
 
-    const totalSales = todayOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-
-    console.log(`Today's total sales: ${totalSales}`);
-
-    return NextResponse.json({
-      date: startOfDay.toISOString().split("T")[0],
-      totalSales,
+    return res.json({
+      date: format(today, "yyyy-MM-dd"),
+      totalSales: todaySales ? todaySales.totalSales : 0,
     });
   } catch (error) {
     console.error("Failed to fetch today's sales data:", error);
-    console.error(error.stack);
-    return NextResponse.json(
-      { error: "Failed to fetch today's sales data", details: error.message },
-      { status: 500 }
-    );
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch today's sales data", details: error.message });
   }
 }

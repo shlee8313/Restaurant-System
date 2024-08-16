@@ -2,20 +2,28 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useNavigationStore from "../../store/useNavigationStore";
 import useAuthStore from "../../store/useAuthStore";
 import useSalesStore from "../../store/useSalesStore";
+// import { useEffect } from "react";
 
 const TopNavigation = () => {
   const { currentPage } = useNavigationStore();
-  const { fullLogout, restaurant } = useAuthStore();
-  const { todaySales } = useSalesStore();
+  const { fullLogout, restaurant, restaurantToken } = useAuthStore();
+  const { todaySales, fetchTodaySales } = useSalesStore();
   const router = useRouter();
+  console.log(todaySales);
+  useEffect(() => {
+    if (restaurant && restaurantToken) {
+      console.log("Triggering fetchTodaySales in TopBar");
+      fetchTodaySales(restaurant.restaurantId, restaurantToken);
+    }
+  }, [restaurant, restaurantToken, fetchTodaySales]);
 
   const handleLogout = () => {
-    router.push("/restaurant/login");
+    router.push("/auth/login");
     fullLogout();
   };
 
