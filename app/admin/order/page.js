@@ -14,6 +14,7 @@ import useOrderQueueStore from "../../store/useOrderQueueStore";
 import { v4 as uuidv4 } from "uuid";
 import useSalesStore from "@/app/store/useSalesStore";
 import { format } from "date-fns";
+import LoadingSpinner from "../../components/LoadingSpinner";
 /**
  * 
  
@@ -48,6 +49,8 @@ export default function AdminOrderPage() {
   const router = useRouter();
   const [activeTabsState, setActiveTabsState] = useState({});
   const { todaySales, setTodaySales } = useSalesStore();
+  const [isLoading, setIsLoading] = useState(true);
+
   /**
    * 초기 테이블 생성 함수
    * 레스토랑에 기본 테이블 레이아웃을 설정합니다.
@@ -702,7 +705,7 @@ export default function AdminOrderPage() {
         initializeOrderQueue(updatedQueue);
 
         // toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
-        fetchTodaySales();
+        // fetchTodaySales();
         // 테이블 정보 새로고침
         // await fetchTablesAndOrders();
       } catch (error) {
@@ -849,7 +852,9 @@ export default function AdminOrderPage() {
     ]
   );
 
-  if (!restaurant) return <div>Loading...</div>;
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="p-4">
