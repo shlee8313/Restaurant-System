@@ -12,15 +12,15 @@ import useSalesStore from "../../store/useSalesStore";
 const TopNavigation = () => {
   const { currentPage } = useNavigationStore();
   const { fullLogout, restaurant, restaurantToken } = useAuthStore();
-  const { todaySales, fetchTodaySales } = useSalesStore();
+  const { todaySales } = useSalesStore();
   const router = useRouter();
   console.log(todaySales);
   useEffect(() => {
     if (restaurant && restaurantToken) {
       console.log("Triggering fetchTodaySales in TopBar");
-      fetchTodaySales(restaurant.restaurantId, restaurantToken);
+      // fetchTodaySales(restaurant.restaurantId, restaurantToken);
     }
-  }, [restaurant, restaurantToken, fetchTodaySales]);
+  }, [restaurant, restaurantToken]);
 
   const handleLogout = () => {
     router.push("/auth/login");

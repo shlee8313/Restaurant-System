@@ -47,7 +47,7 @@ export default function AdminOrderPage() {
   const [socket, setSocket] = useState(null);
   const router = useRouter();
   const [activeTabsState, setActiveTabsState] = useState({});
-  const { todaySales, setTodaySales, fetchTodaySales } = useSalesStore();
+  const { todaySales, setTodaySales } = useSalesStore();
   /**
    * 초기 테이블 생성 함수
    * 레스토랑에 기본 테이블 레이아웃을 설정합니다.
@@ -446,7 +446,7 @@ export default function AdminOrderPage() {
     restaurantToken,
     router,
     fetchTablesAndOrders,
-    fetchTodaySales,
+    // fetchTodaySales,
     initializeSocket,
     handleNewOrder,
   ]);
