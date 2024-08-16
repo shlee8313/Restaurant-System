@@ -385,7 +385,10 @@ export default function AdminOrderPage() {
     /**
      *
      */
-    fetchTablesAndOrders();
+    fetchTablesAndOrders().then(() => {
+      // fetchTablesAndOrders가 완료된 후에 isLoading을 false로 설정
+      setIsLoading(false);
+    });
 
     /**
      *
@@ -394,14 +397,14 @@ export default function AdminOrderPage() {
     if (newSocket) {
       newSocket.on("newOrder", handleNewOrder);
       setSocket(newSocket);
-      setIsLoading(false);
+      // setIsLoading(false);
     }
 
     return () => {
       if (newSocket) {
         newSocket.off("newOrder", handleNewOrder);
         closeSocket();
-        setIsLoading(false);
+        // setIsLoading(false);
       }
     };
   }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
