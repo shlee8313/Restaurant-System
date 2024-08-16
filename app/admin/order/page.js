@@ -421,7 +421,7 @@ export default function AdminOrderPage() {
         await fetchTablesAndOrders();
         // Add log here
         console.log("Calling fetchTodaySales with restaurantId:", restaurant.restaurantId);
-        await fetchTodaySales(restaurant.restaurantId, restaurantToken);
+        // await fetchTodaySales(restaurant.restaurantId, restaurantToken);
 
         const newSocket = initializeSocket();
         if (newSocket) {
