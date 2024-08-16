@@ -11,14 +11,11 @@ const useSalesStore = create((set) => ({
   fetchTodaySales: async (restaurantId, token) => {
     console.log("Fetching today's sales for:", restaurantId);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/sales/today?restaurantId=${restaurantId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`/api/sales/today?restaurantId=${restaurantId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (response.ok) {
         console.log("Fetched sales data:", data.totalSales);
