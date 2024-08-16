@@ -372,40 +372,6 @@ export default function AdminOrderPage() {
    *
    */
   // 컴포넌트 마운트 시 실행되는 효과
-  // useEffect(() => {
-  //   console.log("AdminOrderPage useEffect triggered");
-
-  //   if (!restaurant || !restaurantToken || !restaurant.hasTables) {
-  //     console.log("No restaurant or token or hasTables. Redirecting to login...");
-  //     router.push("/restaurant/login");
-  //     return;
-  //   }
-
-  //   console.log("Initializing AdminOrderPage...");
-  //   /**
-  //    *
-  //    */
-  //   fetchTablesAndOrders();
-
-  //   /**
-  //    *
-  //    */
-  //   const newSocket = initializeSocket();
-  //   if (newSocket) {
-  //     newSocket.on("newOrder", handleNewOrder);
-  //     setSocket(newSocket);
-  //   }
-
-  //   return () => {
-  //     if (newSocket) {
-  //       newSocket.off("newOrder", handleNewOrder);
-  //       closeSocket();
-  //     }
-  //   };
-  // }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
-  /**
-   *
-   */
   useEffect(() => {
     console.log("AdminOrderPage useEffect triggered");
 
@@ -416,50 +382,84 @@ export default function AdminOrderPage() {
     }
 
     console.log("Initializing AdminOrderPage...");
-
-    setIsLoading(true);
-
-    const initializeData = async () => {
-      try {
-        await fetchTablesAndOrders();
-        await fetchTodaySales();
-        // await fetchTodaySales(restaurant.restaurantId, restaurantToken);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        // 에러 처리 로직 (예: 토스트 메시지 표시)
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeData();
-
-    if (!socketInitialized.current) {
-      const newSocket = initializeSocket();
-      if (newSocket) {
-        newSocket.on("newOrder", handleNewOrder);
-        setSocket(newSocket);
-        socketInitialized.current = true;
-      }
+    /**
+     *
+     */
+    fetchTablesAndOrders();
+    fetchTodaySales();
+    /**
+     *
+     */
+    const newSocket = initializeSocket();
+    if (newSocket) {
+      newSocket.on("newOrder", handleNewOrder);
+      setSocket(newSocket);
     }
 
     return () => {
-      if (socket) {
-        socket.off("newOrder", handleNewOrder);
+      if (newSocket) {
+        newSocket.off("newOrder", handleNewOrder);
         closeSocket();
-        socketInitialized.current = false;
       }
     };
-  }, [
-    restaurant,
-    restaurantToken,
-    router,
-    fetchTablesAndOrders,
-    fetchTodaySales,
-    initializeSocket,
-    handleNewOrder,
-    closeSocket,
-  ]);
+  }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
+  /**
+   *
+   */
+  // useEffect(() => {
+  //   console.log("AdminOrderPage useEffect triggered");
+
+  //   if (!restaurant || !restaurantToken || !restaurant.hasTables) {
+  //     console.log("No restaurant or token or hasTables. Redirecting to login...");
+  //     router.push("/restaurant/login");
+  //     return;
+  //   }
+
+  //   console.log("Initializing AdminOrderPage...");
+
+  //   setIsLoading(true);
+
+  //   const initializeData = async () => {
+  //     try {
+  //       await fetchTablesAndOrders();
+  //       await fetchTodaySales();
+  //       // await fetchTodaySales(restaurant.restaurantId, restaurantToken);
+  //     } catch (error) {
+  //       console.error("Error fetching data:", error);
+  //       // 에러 처리 로직 (예: 토스트 메시지 표시)
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   initializeData();
+
+  //   if (!socketInitialized.current) {
+  //     const newSocket = initializeSocket();
+  //     if (newSocket) {
+  //       newSocket.on("newOrder", handleNewOrder);
+  //       setSocket(newSocket);
+  //       socketInitialized.current = true;
+  //     }
+  //   }
+
+  //   return () => {
+  //     if (socket) {
+  //       socket.off("newOrder", handleNewOrder);
+  //       closeSocket();
+  //       socketInitialized.current = false;
+  //     }
+  //   };
+  // }, [
+  //   restaurant,
+  //   restaurantToken,
+  //   router,
+  //   fetchTablesAndOrders,
+  //   fetchTodaySales,
+  //   initializeSocket,
+  //   handleNewOrder,
+  //   closeSocket,
+  // ]);
   /**
    * 테이블 업데이트 핸들러
    * 테이블의 속성(위치, 크기 등)을 업데이트합니다.
