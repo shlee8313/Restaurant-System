@@ -48,6 +48,7 @@ export default function AdminOrderPage() {
   const router = useRouter();
   const [activeTabsState, setActiveTabsState] = useState({});
   const { todaySales, setTodaySales } = useSalesStore();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   /**
    * 초기 테이블 생성 함수
@@ -851,8 +852,13 @@ export default function AdminOrderPage() {
     ]
   );
 
-  if (!restaurant) return <div>Loading...</div>;
-
+  // if (!restaurant) return <div>Loading...</div>;
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+  /**
+   *
+   */
   return (
     <div className="p-4">
       <AdvancedTableLayout
