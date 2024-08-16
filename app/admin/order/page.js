@@ -246,7 +246,7 @@ export default function AdminOrderPage() {
       // 주문 대기열 정렬
       reorderQueue();
       //오늘매출 가져오기
-      fetchTodaySales();
+      // fetchTodaySales();
     } catch (error) {
       console.error("Error fetching tables and orders:", error);
       toast.error(`테이블 및 주문 정보를 불러오는데 실패했습니다: ${error.message}`);
