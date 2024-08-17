@@ -19,9 +19,9 @@ const SalesCalendarPage = () => {
     if (!restaurant) return;
     setIsLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/sales?restaurantId=${
-        restaurant.restaurantId
-      }&month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`;
+      const url = `/api/sales?restaurantId=${restaurant.restaurantId}&month=${
+        currentDate.getMonth() + 1
+      }&year=${currentDate.getFullYear()}`;
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("restaurantToken")}`,
