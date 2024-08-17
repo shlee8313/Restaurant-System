@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useCallback, useState, useRef } from "react";
+import React, { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { initSocket, closeSocket, getSocket } from "../../utils/socket";
 import useAuthStore from "../../store/useAuthStore";
@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 import useSalesStore from "@/app/store/useSalesStore";
 import { format } from "date-fns";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
-import RestaurantTable from "../../components/RestaurantTable";
+import RestaurantTable from "@/app/components/ResaurantTable";
 /**
  * 
  
