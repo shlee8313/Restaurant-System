@@ -10,7 +10,7 @@ const AdvancedTableLayout = ({
   isEditMode,
   onSaveLayout,
   onUpdateTable,
-  renderContent,
+  renderTableContent,
   onAddTable,
   onRemoveTable,
 }) => {
@@ -66,7 +66,7 @@ const AdvancedTableLayout = ({
                 X
               </button>
             )}
-            <div className="w-full h-full p-2 pt-10 ">{renderContent(table)}</div>
+            <div className="w-full h-full p-2 pt-10 ">{renderTableContent(table)}</div>
           </div>
         </Rnd>
       ))}

@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 import useSalesStore from "@/app/store/useSalesStore";
 import { format } from "date-fns";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
+import RestaurantTable from "../../components/RestaurantTable";
 /**
  * 
  
@@ -51,6 +52,23 @@ export default function AdminOrderPage() {
   const { todaySales, setTodaySales } = useSalesStore();
   const [isLoading, setIsLoading] = useState(false);
   const socketInitialized = useRef(false);
+  /**
+   *
+   */
+  const authInfo = useMemo(() => ({ restaurant, restaurantToken }), [restaurant, restaurantToken]);
+
+  /**
+   *
+   */
+  const tableTotalAmounts = useMemo(() => {
+    return tables.reduce((acc, table) => {
+      acc[table.tableId] = (table.orders || []).reduce(
+        (sum, order) => sum + (order.totalAmount || 0),
+        0
+      );
+      return acc;
+    }, {});
+  }, [tables]);
   /**
    * 초기 테이블 생성 함수
    * 레스토랑에 기본 테이블 레이아웃을 설정합니다.
@@ -373,41 +391,27 @@ export default function AdminOrderPage() {
    */
   // 컴포넌트 마운트 시 실행되는 효과
   useEffect(() => {
-    console.log("AdminOrderPage useEffect triggered");
-
-    if (!restaurant || !restaurantToken || !restaurant.hasTables) {
-      console.log("No restaurant or token or hasTables. Redirecting to login...");
+    if (!authInfo.restaurant || !authInfo.restaurantToken || !authInfo.restaurant.hasTables) {
       router.push("/restaurant/login");
       return;
     }
-    setIsLoading(true);
-    console.log("Initializing AdminOrderPage...");
-    /**
-     *
-     */
-    fetchTablesAndOrders().then(() => {
-      // fetchTablesAndOrders가 완료된 후에 isLoading을 false로 설정
-      setIsLoading(false);
-    });
 
-    /**
-     *
-     */
-    const newSocket = initializeSocket();
+    setIsLoading(true);
+    fetchTablesAndOrders().then(() => setIsLoading(false));
+
+    const newSocket = initSocket(authInfo.restaurant.restaurantId);
     if (newSocket) {
       newSocket.on("newOrder", handleNewOrder);
       setSocket(newSocket);
-      // setIsLoading(false);
     }
 
     return () => {
       if (newSocket) {
         newSocket.off("newOrder", handleNewOrder);
         closeSocket();
-        // setIsLoading(false);
       }
     };
-  }, [restaurant, restaurantToken, router, fetchTablesAndOrders, initializeSocket, handleNewOrder]);
+  }, [authInfo, fetchTablesAndOrders, handleNewOrder]);
   /**
    *
    */
@@ -730,138 +734,163 @@ export default function AdminOrderPage() {
   /**
    *
    */
-  const renderTableContent = useCallback(
-    (table) => {
-      console.log("Rendering table content for table:", table);
+  // const renderTableContent = useCallback(
+  //   (table) => {
+  //     console.log("Rendering table content for table:", table);
 
-      // 주문 데이터 구조 확인
-      const orders = table.orders || (table.order ? [table.order] : []);
-      console.log("Table orders:", orders);
-      const tableTotalAmount = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-      const activeTab = activeTabsState[table.tableId] ?? orders.length - 1;
-      return (
-        <div className="mt-2 w-full h-full flex flex-col">
-          {orders.length > 0 ? (
-            <>
-              <div className="flex border-b">
-                {orders.map((order, index) => {
-                  const orderIndex = orderQueue.findIndex(
-                    (queueOrder) => queueOrder._id === order._id
-                  );
+  //     // 주문 데이터 구조 확인
+  //     const orders = table.orders || (table.order ? [table.order] : []);
+  //     console.log("Table orders:", orders);
+  //     const tableTotalAmount = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  //     const activeTab = activeTabsState[table.tableId] ?? orders.length - 1;
+  //     return (
+  //       <div className="mt-2 w-full h-full flex flex-col">
+  //         {orders.length > 0 ? (
+  //           <>
+  //             <div className="flex border-b">
+  //               {orders.map((order, index) => {
+  //                 const orderIndex = orderQueue.findIndex(
+  //                   (queueOrder) => queueOrder._id === order._id
+  //                 );
 
-                  return (
-                    <div
-                      key={order._id || index}
-                      className={`py-2 px-4 text-sm font-semibold rounded-t-lg mr-1 ${
-                        activeTab === index
-                          ? "bg-white text-blue-600 border-t-2 border-l-2 border-r-2 border-blue-400 -mb-px z-10"
-                          : "bg-gray-300 text-gray-600 border-t-2 border-l-2 border-r-2 border-gray-300 hover:bg-gray-300 border"
-                      }`}
-                      onClick={() => handleTabChange(table.tableId, index)}
-                    >
-                      {/* 주문 #{index + 1} */}
-                      주문 #
-                      {orderQueue.length > 0 && orderIndex >= 0 && (
-                        <span className="px-2 py-1 rounded-full bg-pink-600 text-white">
-                          {orderIndex + 1}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="bg-white border-2 border-blue-400 rounded-b-lg rounded-tr-lg flex-grow overflow-x-hidden overflow-y-auto custom-scrollbar">
-                <div className="p-1">
-                  {orders.map((order, orderIndex) => (
-                    <div
-                      key={order._id || orderIndex}
-                      className={`${activeTab === orderIndex ? "block " : "hidden "}`}
-                    >
-                      {/* 주문 순서 표시 추가 */}
-                      {/* <span className="text-sm font-semibold">
-                        주문 순서:{" "}
-                        {orderQueue.findIndex((queueOrder) => queueOrder._id === order._id) + 1}
-                      </span> */}
-                      <ul className="text-sm">
-                        {order.items &&
-                          order.items.map((item, itemIndex) => (
-                            <li key={item._id || itemIndex} className="border-b border-blue-200">
-                              <div className="mt-1 mx-3 flex justify-between items-center p-2">
-                                <div className="flex-grow flex items-center">
-                                  <span>{item.name}</span>
-                                  <span className="ml-2 bg-gray-600 text-white text-md font-medium px-2 py-1 rounded-lg">
-                                    {item.quantity}
-                                  </span>
-                                </div>
-                                <div>{formatNumber(item.price * item.quantity)}원</div>
-                              </div>
-                            </li>
-                          ))}
-                      </ul>
-                      {order.items && order.items.every((item) => item.price === 0) ? (
-                        <button
-                          className="mt-2 text-sm px-2 py-1 rounded-xl bg-gray-800 text-white right-0"
-                          onClick={() => handleCallComplete(table.tableId, order)}
-                        >
-                          호출
-                        </button>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-center">
-                            <button
-                              className={`mt-2 text-sm px-3 py-1 rounded-lg ml-auto ${getStatusColor(
-                                order.status
-                              )}`}
-                              onClick={
-                                order.status !== "served"
-                                  ? () => handleOrderStatusChange(table.tableId, order)
-                                  : undefined
-                              }
-                              disabled={order.status === "served"}
-                            >
-                              {getStatusText(order.status)}
-                            </button>
-                          </div>
+  //                 return (
+  //                   <div
+  //                     key={order._id || index}
+  //                     className={`py-2 px-4 text-sm font-semibold rounded-t-lg mr-1 ${
+  //                       activeTab === index
+  //                         ? "bg-white text-blue-600 border-t-2 border-l-2 border-r-2 border-blue-400 -mb-px z-10"
+  //                         : "bg-gray-300 text-gray-600 border-t-2 border-l-2 border-r-2 border-gray-300 hover:bg-gray-300 border"
+  //                     }`}
+  //                     onClick={() => handleTabChange(table.tableId, index)}
+  //                   >
+  //                     {/* 주문 #{index + 1} */}
+  //                     주문 #
+  //                     {orderQueue.length > 0 && orderIndex >= 0 && (
+  //                       <span className="px-2 py-1 rounded-full bg-pink-600 text-white">
+  //                         {orderIndex + 1}
+  //                       </span>
+  //                     )}
+  //                   </div>
+  //                 );
+  //               })}
+  //             </div>
+  //             <div className="bg-white border-2 border-blue-400 rounded-b-lg rounded-tr-lg flex-grow overflow-x-hidden overflow-y-auto custom-scrollbar">
+  //               <div className="p-1">
+  //                 {orders.map((order, orderIndex) => (
+  //                   <div
+  //                     key={order._id || orderIndex}
+  //                     className={`${activeTab === orderIndex ? "block " : "hidden "}`}
+  //                   >
+  //                     {/* 주문 순서 표시 추가 */}
+  //                     {/* <span className="text-sm font-semibold">
+  //                       주문 순서:{" "}
+  //                       {orderQueue.findIndex((queueOrder) => queueOrder._id === order._id) + 1}
+  //                     </span> */}
+  //                     <ul className="text-sm">
+  //                       {order.items &&
+  //                         order.items.map((item, itemIndex) => (
+  //                           <li key={item._id || itemIndex} className="border-b border-blue-200">
+  //                             <div className="mt-1 mx-3 flex justify-between items-center p-2">
+  //                               <div className="flex-grow flex items-center">
+  //                                 <span>{item.name}</span>
+  //                                 <span className="ml-2 bg-gray-600 text-white text-md font-medium px-2 py-1 rounded-lg">
+  //                                   {item.quantity}
+  //                                 </span>
+  //                               </div>
+  //                               <div>{formatNumber(item.price * item.quantity)}원</div>
+  //                             </div>
+  //                           </li>
+  //                         ))}
+  //                     </ul>
+  //                     {order.items && order.items.every((item) => item.price === 0) ? (
+  //                       <button
+  //                         className="mt-2 text-sm px-2 py-1 rounded-xl bg-gray-800 text-white right-0"
+  //                         onClick={() => handleCallComplete(table.tableId, order)}
+  //                       >
+  //                         호출
+  //                       </button>
+  //                     ) : (
+  //                       <>
+  //                         <div className="flex justify-between items-center">
+  //                           <button
+  //                             className={`mt-2 text-sm px-3 py-1 rounded-lg ml-auto ${getStatusColor(
+  //                               order.status
+  //                             )}`}
+  //                             onClick={
+  //                               order.status !== "served"
+  //                                 ? () => handleOrderStatusChange(table.tableId, order)
+  //                                 : undefined
+  //                             }
+  //                             disabled={order.status === "served"}
+  //                           >
+  //                             {getStatusText(order.status)}
+  //                           </button>
+  //                         </div>
 
-                          {/* <div className="mt-2 font-bold text-right p-2 border-t border-gray-200">
-                            {/* 총액: {formatNumber(order.totalAmount)}원 */}
-                          {/* 총액: {formatNumber(tableTotalAmount)}원 */}
-                          {/* </div> */}
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-grow"></div>
-              {/* 테이블 전체 총액 표시 */}
-              <div className="mt-2 font-bold text-right p-2 border-t border-gray-200">
-                <button
-                  onClick={() => handlePayment(table.tableId)}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors mr-4"
-                >
-                  결제
-                </button>
-                <span>총액: {formatNumber(tableTotalAmount)}원</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm p-4">주문 없음</p>
-          )}
-        </div>
-      );
-    },
-    [
-      activeTabsState,
-      handleTabChange,
-      handleOrderStatusChange,
-      handleCallComplete,
-      getStatusColor,
-      getStatusText,
-      formatNumber,
-      orderQueue,
-    ]
-  );
+  //                         {/* <div className="mt-2 font-bold text-right p-2 border-t border-gray-200">
+  //                           {/* 총액: {formatNumber(order.totalAmount)}원 */}
+  //                         {/* 총액: {formatNumber(tableTotalAmount)}원 */}
+  //                         {/* </div> */}
+  //                       </>
+  //                     )}
+  //                   </div>
+  //                 ))}
+  //               </div>
+  //             </div>
+  //             <div className="flex-grow"></div>
+  //             {/* 테이블 전체 총액 표시 */}
+  //             <div className="mt-2 font-bold text-right p-2 border-t border-gray-200">
+  //               <button
+  //                 onClick={() => handlePayment(table.tableId)}
+  //                 className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors mr-4"
+  //               >
+  //                 결제
+  //               </button>
+  //               <span>총액: {formatNumber(tableTotalAmount)}원</span>
+  //             </div>
+  //           </>
+  //         ) : (
+  //           <p className="text-sm p-4">주문 없음</p>
+  //         )}
+  //       </div>
+  //     );
+  //   },
+  //   [
+  //     activeTabsState,
+  //     handleTabChange,
+  //     handleOrderStatusChange,
+  //     handleCallComplete,
+  //     getStatusColor,
+  //     getStatusText,
+  //     formatNumber,
+  //     orderQueue,
+  //   ]
+  // );
+
+  const memoizedTableComponents = useMemo(() => {
+    return tables.map((table) => (
+      <RestaurantTable
+        key={table.tableId}
+        table={table}
+        handleOrderStatusChange={handleOrderStatusChange}
+        handleCallComplete={handleCallComplete}
+        handlePayment={handlePayment}
+        activeTab={activeTabsState[table.tableId] ?? (table.orders?.length ?? 0) - 1}
+        handleTabChange={handleTabChange}
+        orderQueue={orderQueue}
+        formatNumber={formatNumber}
+      />
+    ));
+  }, [
+    tables,
+    handleOrderStatusChange,
+    handleCallComplete,
+    handlePayment,
+    activeTabsState,
+    handleTabChange,
+    orderQueue,
+    formatNumber,
+  ]);
 
   // if (!restaurant) return <div>Loading...</div>;
   if (isLoading) {
@@ -877,7 +906,9 @@ export default function AdminOrderPage() {
         isEditMode={isEditMode}
         onSaveLayout={handleSaveLayout}
         onUpdateTable={handleUpdateTable}
-        renderContent={(table) => renderTableContent(table, handleTabChange)}
+        renderTableContent={(table) =>
+          memoizedTableComponents.find((comp) => comp.key === table.tableId.toString())
+        }
         onAddTable={addTable}
         onRemoveTable={removeTable}
       />
