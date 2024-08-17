@@ -15,6 +15,7 @@ import {
   BookOpen,
   User,
   QrCode,
+  Edit,
 } from "lucide-react";
 import useSidebarStore from "../../store/usesidebarStore";
 import { useRouter } from "next/navigation";
@@ -40,10 +41,27 @@ const SideNav = () => {
   }, [currentPage]);
 
   const handleNavClick = (page, path) => {
+    if (isEditMode) {
+      toggleEditMode(); // 편집 모드 종료
+    }
     setActivePage(page);
     setCurrentPage(page);
     router.push(path);
-    if (isEditMode) toggleEditMode();
+  };
+
+  const handleEditModeToggle = () => {
+    toggleEditMode();
+    if (!isEditMode) {
+      // 편집 모드로 전환될 때
+      setActivePage("주문내역");
+      setCurrentPage("주문내역");
+      router.push("/admin/order");
+    } else {
+      // 편집 모드가 종료될 때
+      setActivePage("주문내역");
+      setCurrentPage("주문내역");
+      router.push("/admin/order");
+    }
   };
 
   const menuItems = [
@@ -58,6 +76,15 @@ const SideNav = () => {
     { label: "내 정보", path: "/admin/profile", icon: User },
     { label: "QR코드 생성", path: "/admin/qr-generate", icon: QrCode },
   ];
+
+  // 테이블 위치 변경 메뉴 항목 추가
+  if (restaurant?.hasTables) {
+    menuItems.push({
+      label: "테이블 위치 변경",
+      path: "/admin/order",
+      icon: Edit,
+    });
+  }
 
   return (
     <div
@@ -107,34 +134,32 @@ const SideNav = () => {
               <Link
                 href={item.path}
                 className={`flex items-center p-2 rounded ${
-                  activePage === item.label ? "bg-blue-600 text-white" : "hover:bg-blue-200"
+                  activePage === item.label || (isEditMode && item.label === "테이블 위치 변경")
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-blue-200"
+                } ${
+                  item.label === "테이블 위치 변경" && isEditMode ? "bg-red-500 text-white" : ""
                 }`}
-                onClick={() => handleNavClick(item.label, item.path)}
-              >
-                <item.icon size={20} className={isSideBarOpen ? "mr-2" : "mx-auto"} />
-                {isSideBarOpen && <span>{item.label}</span>}
-              </Link>
-            </li>
-          ))}
-          {restaurant?.hasTables && (
-            <li>
-              <Link
-                href="/admin/order"
-                className={`flex items-center p-2 rounded ${
-                  isEditMode ? "bg-red-500 text-white" : "hover:bg-blue-200"
-                }`}
-                onClick={() => {
-                  toggleEditMode();
-                  handleNavClick(isEditMode ? "주문내역" : "테이블 위치 변경", "/admin/order");
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (item.label === "테이블 위치 변경") {
+                    handleEditModeToggle();
+                  } else {
+                    handleNavClick(item.label, item.path);
+                  }
                 }}
               >
-                <Menu size={20} className={isSideBarOpen ? "mr-2" : "mx-auto"} />
+                <item.icon size={20} className={isSideBarOpen ? "mr-2" : "mx-auto"} />
                 {isSideBarOpen && (
-                  <span>{isEditMode ? "테이블 위치 편집 종료" : "테이블 위치 변경"}</span>
+                  <span>
+                    {item.label === "테이블 위치 변경" && isEditMode
+                      ? "테이블 위치 편집 종료"
+                      : item.label}
+                  </span>
                 )}
               </Link>
             </li>
-          )}
+          ))}
         </ul>
       </nav>
     </div>
