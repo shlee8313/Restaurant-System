@@ -29,9 +29,9 @@ const RestaurantTable = React.memo(
 
     const getStatusText = (status) => {
       const texts = {
-        pending: "Order Received",
-        preparing: "Preparing",
-        served: "Served",
+        pending: "주문 접수",
+        preparing: "준비중",
+        served: "서빙완료",
         completed: "Completed",
       };
       return texts[status] || "Unknown";

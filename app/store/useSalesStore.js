@@ -11,7 +11,7 @@ const useSalesStore = create((set) => ({
   fetchTodaySales: async (restaurantId, token) => {
     console.log("Fetching today's sales for:", restaurantId);
     try {
-      const response = await fetch(`/api/sales/today?restaurantId=${restaurantId}`, {
+      const response = await fetch(`/api/sales/todaySales?restaurantId=${restaurantId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -118,26 +118,44 @@ export async function PUT(request, { params }) {
 /**
  *
  */
-export async function PATCH(request) {
+export async function PATCH(req) {
   await dbConnect();
 
   try {
-    const body = await request.json();
-    const { restaurantId, tableId, action, orderId, newStatus } = body;
+    const { restaurantId, tableId, action, orderId, newStatus } = req.body;
 
     if (action === "completeAllOrders") {
-      // 테이블의 모든 주문을 완료 상태로 변경
-      const updatedOrders = await Order.updateMany(
-        { restaurantId, tableId, status: { $ne: "completed" } },
-        { $set: { status: "completed" } }
-      );
+      const orders = await Order.find({ restaurantId, tableId, status: { $ne: "completed" } });
+
+      for (const order of orders) {
+        order.status = "completed";
+        await order.save();
+
+        // Update DailySales
+        const orderDate = order.createdAt.toISOString().split("T")[0];
+        await DailySales.findOneAndUpdate(
+          { restaurantId, date: orderDate },
+          {
+            $inc: { totalSales: order.totalAmount },
+            $push: {
+              itemSales: order.items.map((item) => ({
+                itemId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                sales: item.price * item.quantity,
+              })),
+            },
+          },
+          { upsert: true, new: true }
+        );
+      }
 
       // 테이블 상태를 'empty'로 변경
       await Table.findOneAndUpdate({ restaurantId, tableId }, { $set: { status: "empty" } });
 
       return NextResponse.json({
         message: "All orders completed and table status updated",
-        modifiedCount: updatedOrders.modifiedCount,
+        modifiedCount: orders.length,
       });
     } else {
       // 기존의 단일 주문 상태 변경 로직
@@ -148,7 +166,27 @@ export async function PATCH(request) {
       );
 
       if (!order) {
-        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+        return NextResponse.status(404).json({ error: "Order not found" });
+      }
+
+      if (newStatus === "completed") {
+        // Update DailySales for single order completion
+        const orderDate = order.createdAt.toISOString().split("T")[0];
+        await DailySales.findOneAndUpdate(
+          { restaurantId: order.restaurantId, date: orderDate },
+          {
+            $inc: { totalSales: order.totalAmount },
+            $push: {
+              itemSales: order.items.map((item) => ({
+                itemId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                sales: item.price * item.quantity,
+              })),
+            },
+          },
+          { upsert: true, new: true }
+        );
       }
 
       // 업데이트된 대기열 정보 가져오기
@@ -161,6 +199,50 @@ export async function PATCH(request) {
     }
   } catch (error) {
     console.error("Failed to update order(s):", error);
-    return NextResponse.json({ error: "Failed to update order(s)" }, { status: 500 });
+    return NextResponse.status(500).json({ error: "Failed to update order(s)" });
   }
 }
+
+//   try {
+//     const body = await request.json();
+//     const { restaurantId, tableId, action, orderId, newStatus } = body;
+
+//     if (action === "completeAllOrders") {
+//       // 테이블의 모든 주문을 완료 상태로 변경
+//       const updatedOrders = await Order.updateMany(
+//         { restaurantId, tableId, status: { $ne: "completed" } },
+//         { $set: { status: "completed" } }
+//       );
+
+//       // 테이블 상태를 'empty'로 변경
+//       await Table.findOneAndUpdate({ restaurantId, tableId }, { $set: { status: "empty" } });
+
+//       return NextResponse.json({
+//         message: "All orders completed and table status updated",
+//         modifiedCount: updatedOrders.modifiedCount,
+//       });
+//     } else {
+//       // 기존의 단일 주문 상태 변경 로직
+//       const order = await Order.findByIdAndUpdate(
+//         orderId,
+//         { $set: { status: newStatus } },
+//         { new: true }
+//       );
+
+//       if (!order) {
+//         return NextResponse.json({ error: "Order not found" }, { status: 404 });
+//       }
+
+//       // 업데이트된 대기열 정보 가져오기
+//       const updatedQueue = await Order.find({
+//         restaurantId: order.restaurantId,
+//         status: { $in: ["pending", "preparing"] },
+//       }).sort("createdAt");
+
+//       return NextResponse.json({ message: "Order updated", order, updatedQueue });
+//     }
+//   } catch (error) {
+//     console.error("Failed to update order(s):", error);
+//     return NextResponse.json({ error: "Failed to update order(s)" }, { status: 500 });
+//   }
+// }
