@@ -1,6 +1,6 @@
 //file: \app\store\useOrderQueueStore.js
 
-import create from "zustand";
+import { create } from "zustand";
 
 const useOrderQueueStore = create((set) => ({
   orderQueue: [],
