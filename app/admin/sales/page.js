@@ -1,5 +1,7 @@
 //file: \client\renderer\app\admin\sales\page.js
 
+//file: \client\renderer\app\admin\sales\page.js
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -14,14 +16,17 @@ const SalesCalendarPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { restaurant } = useAuthStore();
   const router = useRouter();
-
+  const [selectedDate, setSelectedDate] = useState(null);
+  /**
+   *
+   */
   const fetchSalesData = useCallback(async () => {
     if (!restaurant) return;
     setIsLoading(true);
     try {
-      const url = `/api/sales?restaurantId=${restaurant.restaurantId}&month=${
-        currentDate.getMonth() + 1
-      }&year=${currentDate.getFullYear()}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/sales?restaurantId=${
+        restaurant.restaurantId
+      }&month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`;
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("restaurantToken")}`,
@@ -53,6 +58,8 @@ const SalesCalendarPage = () => {
       setCurrentDate={setCurrentDate}
       salesData={salesData}
       fetchSalesData={fetchSalesData}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
     />
   );
 };

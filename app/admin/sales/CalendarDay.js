@@ -7,7 +7,8 @@ const CalendarDay = React.memo(({ day }) => {
   if (!day) return <div className="bg-white border border-gray-200"></div>;
 
   const { date, isToday, isSunday, isSaturday, isSelected, salesData } = day;
-  console.log("isSelected", isSelected);
+
+  // console.log("isSelected", isSelected);
   const tooltipContent = salesData && (
     <div>
       <div className="font-bold mb-2">총 매출: ₩{salesData.totalSales.toLocaleString()}</div>
