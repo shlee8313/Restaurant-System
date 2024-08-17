@@ -122,8 +122,8 @@ export async function PATCH(req) {
   await dbConnect();
 
   try {
-    const { restaurantId, tableId, action, orderId, newStatus } = req.body;
-
+    const { restaurantId, tableId, action, orderId, newStatus } = req.json();
+    console.log("주문결제", restaurantId, tableId, action, orderId, newStatus);
     if (action === "completeAllOrders") {
       const orders = await Order.find({ restaurantId, tableId, status: { $ne: "completed" } });
 
