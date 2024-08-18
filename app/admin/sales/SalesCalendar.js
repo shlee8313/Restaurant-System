@@ -10,7 +10,7 @@ import CalendarDay from "./CalendarDay";
 const SalesCalendar = React.memo(
   ({ currentDate, setCurrentDate, salesData, fetchSalesData, selectedDate, setSelectedDate }) => {
     // const [selectedDate, setSelectedDate] = useState(null);
-
+    console.log("salesData", salesData);
     const formatDate = (date) => {
       return date.toISOString().split("T")[0];
     };

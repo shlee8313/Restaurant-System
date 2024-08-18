@@ -17,7 +17,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const restaurantId = searchParams.get("restaurantId");
     const date = searchParams.get("date");
-    // console.log("req date", date);
+    console.log("req date", restaurantId);
 
     if (!restaurantId) {
       return NextResponse.json({ error: "Restaurant ID is required" }, { status: 400 });
@@ -123,7 +123,10 @@ export async function PATCH(req) {
 
   try {
     const { restaurantId, tableId, action, orderId, newStatus } = await req.json();
-
+    // restaurantId가 없을 경우 에러 반환
+    if (!restaurantId || !tableId || !action) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
     if (action === "completeAllOrders") {
       const orders = await Order.find({ restaurantId, tableId, status: { $ne: "completed" } });
 

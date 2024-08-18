@@ -27,13 +27,10 @@ const SalesCalendarPage = () => {
       const url = `/api/sales?restaurantId=${restaurant.restaurantId}&month=${
         currentDate.getMonth() + 1
       }&year=${currentDate.getFullYear()}`;
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("restaurantToken")}`,
-        },
-      });
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch sales data");
       const data = await response.json();
+      console.log(data);
       setSalesData(data);
     } catch (error) {
       console.error("Failed to fetch sales data:", error);

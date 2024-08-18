@@ -210,16 +210,8 @@ export default function AdminOrderPage() {
 
     try {
       const [tablesResponse, ordersResponse] = await Promise.all([
-        fetch(`/api/tables?restaurantId=${restaurant.restaurantId}`, {
-          headers: {
-            Authorization: `Bearer ${restaurantToken}`,
-          },
-        }),
-        fetch(`/api/orders?restaurantId=${restaurant.restaurantId}`, {
-          headers: {
-            Authorization: `Bearer ${restaurantToken}`,
-          },
-        }),
+        fetch(`/api/tables?restaurantId=${restaurant.restaurantId}`),
+        fetch(`/api/orders?restaurantId=${restaurant.restaurantId}`),
       ]);
 
       if (!tablesResponse.ok || !ordersResponse.ok) {
@@ -705,32 +697,35 @@ export default function AdminOrderPage() {
           }),
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to complete orders");
+        // 응답 상태 코드 확인
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || `Server responded with status: ${response.status}`);
+          }
+
+          console.log("Payment result:", result);
+
+          updateTable(tableId, { status: "empty", orders: [] });
+          const updatedQueue = orderQueue.filter((order) => order.tableId !== tableId);
+          initializeOrderQueue(updatedQueue);
+          toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
+          fetchTodaySales();
+        } else {
+          // Handle non-JSON response
+          const text = await response.text();
+          console.error("Non-JSON response:", text);
+          throw new Error("Unexpected response from server");
         }
-
-        const result = await response.json();
-        console.log("Payment result:", result);
-
-        // 테이블 상태 업데이트
-        updateTable(tableId, { status: "empty", orders: [] });
-
-        // 주문 대기열에서 해당 테이블의 주문 제거
-        const updatedQueue = orderQueue.filter((order) => order.tableId !== tableId);
-        initializeOrderQueue(updatedQueue);
-
-        // toast.success(`테이블 ${tableId}의 모든 주문이 완료되었습니다.`);
-        fetchTodaySales();
-        // 테이블 정보 새로고침
-        // await fetchTablesAndOrders();
       } catch (error) {
         console.error("Error completing orders:", error);
-        toast.error("주문 완료 처리 중 오류가 발생했습니다.");
+        toast.error(`주문 완료 처리 중 오류가 발생했습니다: ${error.message}`);
       }
     },
-    [restaurant, updateTable, orderQueue, initializeOrderQueue]
+    [restaurant, updateTable, orderQueue, initializeOrderQueue, fetchTodaySales]
   );
-
   /**
    *
    */

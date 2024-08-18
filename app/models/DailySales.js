@@ -15,6 +15,10 @@ const DailySalesSchema = new mongoose.Schema({
   ],
 });
 
+// 인덱스를 스키마 정의 내부에 추가
 DailySalesSchema.index({ restaurantId: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model("DailySales", DailySalesSchema);
+// 모델이 이미 존재하는 경우 사용하고, 그렇지 않으면 새로 생성
+const DailySales = mongoose.models.DailySales || mongoose.model("DailySales", DailySalesSchema);
+
+export default DailySales;
